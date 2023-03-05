@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "reconstruct2stack"
+version = "0.1.0"
+description = "A Python package to convert Reconstruct JSER files to  flat images"
+authors = ["Jordan Matelsky <opensource@matelsky.com>"]
+license = "Apache 2.0"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+opencv-python = "^4.7.0"
+
+[tool.poetry.dev-dependencies]
+black = "^23.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
