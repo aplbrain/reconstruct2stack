@@ -1,7 +1,9 @@
+from collections import Counter
 from functools import cached_property
 from typing import Optional, Union
 from typing import Tuple, Union, List, Dict, Any
 import json
+from tqdm.auto import tqdm
 import pathlib
 import numpy as np
 import cv2
@@ -18,8 +20,8 @@ class Contour:
         points: Optional[Union[np.ndarray, List[Tuple[float, float]]]] = None,
         x: Optional[Union[np.ndarray, List[float]]] = None,
         y: Optional[Union[np.ndarray, List[float]]] = None,
-        color: Tuple[float, float, float] = None,
-        closed: bool = None,
+        color: Optional[Tuple[float, float, float]] = None,
+        closed: Optional[bool] = None,
         negative: bool = None,
         hidden: bool = None,
         name: str = None,
@@ -258,3 +260,68 @@ class JSERIngester:
             for d in self.get_raw_contours_for_slice(key)
             if filter_by_colors is None or d.color in filter_by_colors
         ]
+
+    def count_names(self) -> Dict[str, int]:
+        """
+        Return the number of contours for each name.
+
+        """
+        all_names = []
+
+        for z in self.keys():
+            names = [c.name for c in self.contours(z)]
+            all_names.extend(names)
+        cnames = Counter(all_names)
+        return cnames
+
+
+def plot_contours(
+    z: int, seg: JSERIngester, image_size_xy: Tuple[int, int], sorted_name_list
+) -> Dict[str, np.ndarray]:
+    """
+    Plot the contours on a 2D image.
+
+    """
+    unique_colors = seg.get_unique_colors_for_slice(z)
+    imgs = {}
+    for col in unique_colors:
+        cs = seg.contours(z, filter_by_colors=[col])
+        cs = [c for c in cs if "loc" not in c.name.lower()]
+        if len(cs) == 0:
+            continue
+        # use cv2 to draw contours
+        img = np.zeros(image_size_xy, dtype=np.uint8)
+        for con in cs:
+            # color is the index of the name in the sorted_name_list
+            color = sorted_name_list.index(con.name)
+            if len(con.x) < 3:
+                continue
+            contours = np.array([np.array([con.x, con.y]).T]).astype(np.int32)
+            img = cv2.drawContours(
+                np.ascontiguousarray(img), contours, -1, int(color), cv2.FILLED
+            )
+        imgs["_".join(map(str, col))] = img
+    return imgs
+
+
+def jser_to_image_stack(
+    jser: Union[str, pathlib.Path, Dict[str, Any]],
+    output_path: Union[str, pathlib.Path],
+    image_size_xy: Tuple[int, int],
+    progress: bool = True,
+    zs: Optional[List[int]] = None,
+):
+    seg = JSERIngester(jser)
+    name_counts = seg.count_names()
+    sorted_names = sorted(name_counts.items(), key=lambda x: x[0], reverse=True)
+    sorted_name_list = [n[0] for n in sorted_names]
+
+    _prog = tqdm if progress else lambda x: x
+    for z in _prog(seg.keys()):
+        if zs is not None and z not in zs:
+            continue
+        imgs = plot_contours(z, seg, image_size_xy, sorted_name_list)
+        for col, img in imgs.items():
+            # Make the directory if it doesn't exist
+            pathlib.Path(f"{output_path}/{col}").mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(f"{output_path}/{col}/{z}.png", img)

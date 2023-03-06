@@ -8,9 +8,11 @@ license = "Apache 2.0"
 [tool.poetry.dependencies]
 python = "^3.9"
 opencv-python = "^4.7.0"
+tqdm = "^4.65.0"
 
 [tool.poetry.dev-dependencies]
 black = "^23.1.0"
+ipykernel = "^6.21.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

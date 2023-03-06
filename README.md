@@ -12,4 +12,14 @@ poetry install
 
 ## Usage
 
+```python
+from reconstruct2stack import jser_to_image_stack
+
+jser_to_image_stack(
+    "my-series.jser",
+    "segmentation-stack/",
+    (8192, 8192), # image size, in XY pixels
+)
+```
+
 This library is a work in progress. More documentation will follow shortly.
